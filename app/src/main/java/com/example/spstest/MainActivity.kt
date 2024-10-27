@@ -1,10 +1,10 @@
 package com.example.spstest
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -34,13 +34,13 @@ import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
+import java.io.IOException
 import java.net.InetAddress
 
 
 class MainActivity : ComponentActivity() {
     private val sps = Communication()
     private val refresherWrapper = RefresherWrapper()
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -51,11 +51,26 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    Verbrauch(refresherWrapper, sps)
+                    Verbrauch(refresherWrapper, sps , this)
                 }
             }
             TwoColumnTable()
         }
+    }
+
+    override fun onStart() {
+        super.onStart()
+        Log.d("onStart", "Start Main Activity")
+
+    }
+    override fun onStop() {
+        super.onStop()
+        refresherWrapper.refresher?.stop()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        refresherWrapper.refresher?.stop()
     }
 }
 
@@ -63,10 +78,11 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun Verbrauch(
     refresherWrapper: RefresherWrapper = RefresherWrapper(),
-    sps: Communication = Communication()
+    sps: Communication = Communication(),
+    context: ComponentActivity = MainActivity()
 ) {
     val scope = rememberCoroutineScope()
-    val model = remember { CountersModel(scope, sps) }
+    val model = remember { CountersModel(context,scope, sps) }
     val myStyle = TextStyle(
         fontSize = 24.sp,
         shadow = Shadow(
@@ -79,27 +95,12 @@ fun Verbrauch(
         val thread = Thread(refresherWrapper.refresher)
         thread.start()
     }
-    val values = listOf(
-        DataItem("Pumpenfrequenz", model.pumpenfrequenz.toString() + " Hz"),
-        DataItem("Verbrauch", model.verbrauch.toString() + " l/h"),
-        DataItem("Druck", model.druck.toString() + " bar"),
-        DataItem("Gemittelter Druck 2 Sek", model.gemittelterDruck2Sek.toString() + " bar"),
-        DataItem("Luftfeuchte", model.luftfeuchte.toString() + "%")
-    )
-    LazyColumn(modifier = Modifier.fillMaxSize(),
+    val values = model.values
+    LazyColumn(
+        modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        /*
-        // Header row
-        item {
-            Row(Modifier.fillMaxWidth()) {
-                TableCell("Name", Modifier.weight(1f))
-                TableCell("Wert", Modifier.weight(1f))
-            }
-        }
-        */
-
-
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         // Data rows
         items(values) { item ->
             Row(Modifier.fillMaxWidth()) {
@@ -116,31 +117,10 @@ fun Verbrauch(
             }
         }
     }
-
-
-    /*
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-
-        Text(
-            "Verbrauch: ${model.verbrauch}",
-            modifier = Modifier.padding(16.dp),
-            style = myStyle
-        )
-        Text(
-            "Test: ${model.druck}",
-            modifier = Modifier.padding(16.dp),
-            style = myStyle
-        )
-
-    }*/
 }
 
 
-class CountersModel(scope: CoroutineScope, var sps: Communication) {
+class CountersModel(context: ComponentActivity, scope: CoroutineScope, var sps: Communication) {
     var verbrauch by mutableStateOf(0.0)
         private set
     var pumpenfrequenz by mutableStateOf(0.0)
@@ -151,10 +131,28 @@ class CountersModel(scope: CoroutineScope, var sps: Communication) {
         private set
     var luftfeuchte by mutableStateOf(0)
         private set
+
+    var values by mutableStateOf(listOf<DataItem>())
+        private set
+
+    val settings = FileHelper.loadJsonFromFile(context).getJSONArray("settings")
+
     init {
         snapshotFlow {}
             .onEach(::println)
             .launchIn(scope)
+        Log.d("Settings", settings.toString(2))
+    }
+    fun updateItem(index: Int, newValue: DataItem) {
+        values = values.toMutableList().apply {
+            this[index] = newValue
+        }
+    }
+
+    fun addItem(item: DataItem) {
+        values = values.toMutableList().apply {
+            add(item)
+        }
     }
 
     fun refreshVerbrauch() {
@@ -171,15 +169,51 @@ class CountersModel(scope: CoroutineScope, var sps: Communication) {
             gemittelterDruck2Sek = dbGemittelterDruck2Sek * 1.0
             luftfeuchte = dbLuftfeuchte
 
+            for (i in 0 until settings.length()) {
+                val setting = settings.getJSONObject(i)
+                val name = setting.getString("name")
+                val type = setting.getString("type")
+                val nr = setting.getInt("nr")
+                val dbnr = setting.getInt("dbnr")
+                val unit = setting.getString("unit")
+                val factor = setting.getDouble("factor")
+                val value = when (type) {
+                    "W" -> sps.GetDBW(nr, dbnr) * factor
+                    "R" -> sps.GetDBR(nr, dbnr) * factor
+                    "D" -> sps.GetDBD(nr, dbnr) * factor
+                    else -> 0.0
+                }
+                val newItem = DataItem(name, "" + value + " " + unit)
+                if(values.size <= i ) {
+                    addItem(newItem)
+                }else{
+                    updateItem(i, newItem)
+                }
+            }
+
         } else {
             verbrauch = -1.0
             pumpenfrequenz = -1.0
             druck = -1.0
             gemittelterDruck2Sek = -1.0
             luftfeuchte = -1
+            Log.d("refreshVerbrauch",""+ values.size)
+            for (i in 0 until settings.length()) {
+                if(values.size <= i ) {
+                    addItem(DataItem(settings.getJSONObject(i).getString("name"), "Connection failed"))
+                }else{
+                    updateItem(i,  DataItem(values[i].name, "Connection failed"))
+                }
+            }
+
             var addr: InetAddress = InetAddress.getByName("172.22.15.119")
-            sps.newConnection(addr, 2.toByte())
+            try {
+                sps.newConnection(addr, 2.toByte())
+            } catch (ioexc: IOException) {
+                Log.d("refreshVerbrauch", "Connection failed")
+            }
         }
+        Log.d("refreshVerbrauch", values.toString())
     }
 
     fun reset() {
