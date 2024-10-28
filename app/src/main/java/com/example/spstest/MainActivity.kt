@@ -14,9 +14,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
+import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -41,7 +43,7 @@ class MainActivity : ComponentActivity() {
                 // A surface container using the 'background' color from the theme
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
+                    color = MaterialTheme.colors.background
                 ) {
                     Verbrauch(refresherWrapper, sps, this)
                 }
@@ -66,6 +68,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+const val parameter_index = "INDEX_PARAM"
+
 @Preview
 @Composable
 fun Verbrauch(
@@ -88,12 +92,26 @@ fun Verbrauch(
         thread.start()
     }
     val values = model.values
-    ItemList(values, onItemClick = { index ->
-        Log.d("ItemClick", "Item $index clicked")
-        val intent = Intent(context, EditSettingActivity::class.java).apply {
-            putExtra("PARAM_KEY", ""+ index)
+
+    Scaffold(
+        topBar = { TopBar(context) }
+    ) { paddingValues ->
+        // Apply the padding values to the content
+        Surface(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues),
+            color = MaterialTheme.colors.background
+        ) {
+            ItemList(values, onItemClick = { index ->
+                Log.d("ItemClick", "Item $index clicked")
+                val intent = Intent(context, EditSettingActivity::class.java).apply {
+                    putExtra(parameter_index, index)
+                }
+                context.startActivity(intent)
+            })
         }
-        context.startActivity(intent)})
+    }
 }
 
 @Composable
@@ -117,10 +135,10 @@ fun ItemList(values: List<DataItem>, onItemClick: (Int) -> Unit) {
 fun TableCell(text: String, modifier: Modifier = Modifier, index: Int, onItemClick: (Int) -> Unit) {
     Surface(
         modifier = Modifier
-            .fillMaxWidth()
             .clickable { onItemClick(index) }
             .padding(8.dp)
     ) {
+        Log.d("TableCell", text)
         Text(
             text = text,
             modifier = modifier
@@ -128,4 +146,26 @@ fun TableCell(text: String, modifier: Modifier = Modifier, index: Int, onItemCli
                 .wrapContentWidth(Alignment.Start) // Align text to the start
         )
     }
+}
+
+@Composable
+fun TopBar(context: ComponentActivity = MainActivity()) {
+    TopAppBar(
+        title = { Text(text = "Pumpeninfos") },
+        actions = {
+            IconButton(onClick = {
+                val intent = Intent(context, EditSettingActivity::class.java).apply {
+                    putExtra(parameter_index, -1)
+                }
+                context.startActivity(intent)
+            }) {
+                Icon(Icons.Filled.Add, contentDescription = "Add")
+            }
+            IconButton(onClick = { /* Handle menu click */ }) {
+                Icon(Icons.Filled.Menu, contentDescription = "Menu")
+            }
+        },
+        backgroundColor = MaterialTheme.colors.primary,
+        contentColor = Color.White
+    )
 }
