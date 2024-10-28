@@ -23,6 +23,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 
@@ -42,6 +43,8 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
     var settings = FileHelper.loadJsonFromFile(context)
     var settingsArray = settings.getJSONArray("settings")
     var setting: JSONObject
+    var isError by remember { mutableStateOf(false) }
+
     if (index >= 0) {
         setting = settingsArray.getJSONObject(index)
     } else {
@@ -56,7 +59,7 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
     }
     var name by remember { mutableStateOf(setting.getString("name")) }
     var type by remember { mutableStateOf(setting.getString("type")) }
-    var nr by remember { mutableStateOf(setting.getInt("nr")) }
+    var nr by remember { mutableStateOf(setting.getString("nr")) }
     var dbnr by remember { mutableStateOf(setting.getInt("dbnr")) }
     var unit by remember { mutableStateOf(setting.getString("unit")) }
     var factor by remember { mutableStateOf(setting.getDouble("factor")) }
@@ -89,9 +92,22 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = nr.toString(),
-                onValueChange = { nr = it.toInt() },
+                onValueChange = {
+                    isError = try {
+                        nr = it
+                        it.toInt()
+                        false
+                    } catch (e: NumberFormatException) {
+                        true
+                    }
+                                },
+                isError = isError,
                 label = { Text("Nr") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = if (isError) Color.Red else MaterialTheme.colors.primary,
+                    unfocusedBorderColor = if (isError) Color.Red else MaterialTheme.colors.onSurface.copy(alpha = ContentAlpha.disabled)
+                )
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
@@ -120,10 +136,11 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
             Button(
                 onClick = {
                     Log.d("SaveButton", "Button clicked")
-                    saveSetting(name, type, nr, dbnr, unit, factor, context, settings, setting)
+                    saveSetting(name, type, nr.toInt(), dbnr, unit, factor, context, settings, setting)
                     Toast.makeText(context, "Einstellungen gespeichert", Toast.LENGTH_SHORT).show()
                     context.finish()
                 },
+                enabled = !isError,
                 modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
             ) {
                 Icon(
