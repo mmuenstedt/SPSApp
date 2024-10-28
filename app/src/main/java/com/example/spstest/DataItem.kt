@@ -1,3 +1,3 @@
 package com.example.spstest
 
-data class DataItem(val name: String, val value: String)
+data class DataItem(var name: String, var value: String)

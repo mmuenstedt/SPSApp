@@ -2,6 +2,7 @@ package com.example.spstest
 
 import android.os.Bundle
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.Arrangement
@@ -11,14 +12,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Done
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import org.json.JSONObject
 
@@ -48,6 +52,7 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
         setting.put("dbnr", 0)
         setting.put("unit", "")
         setting.put("factor", 1.0)
+        settingsArray.put(setting)
     }
     var name by remember { mutableStateOf(setting.getString("name")) }
     var type by remember { mutableStateOf(setting.getString("type")) }
@@ -115,17 +120,58 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
             Button(
                 onClick = {
                     Log.d("SaveButton", "Button clicked")
+                    saveSetting(name, type, nr, dbnr, unit, factor, context, settings, setting)
+                    Toast.makeText(context, "Einstellungen gespeichert", Toast.LENGTH_SHORT).show()
+                    context.finish()
                 },
                 modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
             ) {
+                Icon(
+                    imageVector = Icons.Filled.Done,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                )
                 Text("Speichern")
+            }
+            Button(
+                onClick = {
+                    Log.d("DeleteButton", "Button clicked")
+                    if (index >= 0) {
+                        settingsArray.remove(index)
+                        FileHelper.saveJsonToFile(context, settings)
+                    }
+                    Toast.makeText(context, "Einstellung gelöscht", Toast.LENGTH_SHORT).show()
+                    context.finish()
+                },
+                modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.Delete,
+                    contentDescription = null,
+                    modifier = Modifier.size(ButtonDefaults.IconSize)
+                )
+                Text("Löschen")
             }
         }
     }
 }
 
-@Preview(showBackground = true)
-@Composable
-fun DefaultPreview() {
-    SettingMask(-1)
+fun saveSetting(
+    name: String?,
+    type: String?,
+    nr: Int,
+    dbnr: Int,
+    unit: String?,
+    factor: Double,
+    context: ComponentActivity,
+    settings: JSONObject,
+    setting: JSONObject
+) {
+    setting.put("name", name)
+    setting.put("type", type)
+    setting.put("nr", nr)
+    setting.put("dbnr", dbnr)
+    setting.put("unit", unit)
+    setting.put("factor", factor)
+    FileHelper.saveJsonToFile(context, settings)
 }
