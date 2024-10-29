@@ -5,16 +5,23 @@ import android.util.Log
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.runtime.Composable
@@ -22,6 +29,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
@@ -43,7 +51,10 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
     var settings = FileHelper.loadJsonFromFile(context)
     var settingsArray = settings.getJSONArray("settings")
     var setting: JSONObject
-    var isError by remember { mutableStateOf(false) }
+    var isErrorNr by remember { mutableStateOf(false) }
+    var isErrorDbnr by remember { mutableStateOf(false) }
+    var isErrorFactor by remember { mutableStateOf(false) }
+    var dropdownExpanded by remember { mutableStateOf(false) }
 
     if (index >= 0) {
         setting = settingsArray.getJSONObject(index)
@@ -60,9 +71,11 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
     var name by remember { mutableStateOf(setting.getString("name")) }
     var type by remember { mutableStateOf(setting.getString("type")) }
     var nr by remember { mutableStateOf(setting.getString("nr")) }
-    var dbnr by remember { mutableStateOf(setting.getInt("dbnr")) }
+    var dbnr by remember { mutableStateOf(setting.getString("dbnr")) }
     var unit by remember { mutableStateOf(setting.getString("unit")) }
-    var factor by remember { mutableStateOf(setting.getDouble("factor")) }
+    var factor by remember { mutableStateOf(setting.getString("factor")) }
+    val options = listOf("Double Integer", "Integer", "Real", "Byte", "Bit")
+
     Surface(
         modifier = Modifier.fillMaxSize(),
         color = MaterialTheme.colors.background
@@ -72,7 +85,7 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
                 .fillMaxSize()
                 .padding(16.dp),
             verticalArrangement = Arrangement.Center,
-            horizontalAlignment = androidx.compose.ui.Alignment.CenterHorizontally
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             OutlinedTextField(
                 value = name,
@@ -82,39 +95,82 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
                 label = { Text("Name des Wertes") },
                 modifier = Modifier.fillMaxWidth()
             )
-            Spacer(modifier = Modifier.height(8.dp))
-            OutlinedTextField(
-                value = type,
-                onValueChange = { type = it },
-                label = { Text("Typ des Wertes") },
-                modifier = Modifier.fillMaxWidth()
-            )
+            Spacer(modifier = Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { dropdownExpanded = true }
+                    .border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 16.dp, vertical = 16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(text = type, color = MaterialTheme.colors.onSurface)
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = "Dropdown Arrow")
+                }
+                DropdownMenu(
+                    expanded = dropdownExpanded,
+                    onDismissRequest = { dropdownExpanded = false },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    options.forEach { option ->
+                        DropdownMenuItem(
+                            onClick = {
+                                type = option
+                                dropdownExpanded = false
+                            }
+                        ) {
+                            Text(option)
+                        }
+                    }
+                }
+            }
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = nr.toString(),
                 onValueChange = {
-                    isError = try {
+                    isErrorNr = try {
                         nr = it
                         it.toInt()
                         false
                     } catch (e: NumberFormatException) {
                         true
                     }
-                                },
-                isError = isError,
+                },
+                isError = isErrorNr,
                 label = { Text("Nr") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
-                    focusedBorderColor = if (isError) Color.Red else MaterialTheme.colors.primary,
-                    unfocusedBorderColor = if (isError) Color.Red else MaterialTheme.colors.onSurface.copy(alpha = ContentAlpha.disabled)
+                    focusedBorderColor = if (isErrorNr) Color.Red else MaterialTheme.colors.primary,
+                    unfocusedBorderColor = if (isErrorNr) Color.Red else MaterialTheme.colors.onSurface.copy(
+                        alpha = ContentAlpha.disabled
+                    )
                 )
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = dbnr.toString(),
-                onValueChange = { dbnr = it.toInt() },
+                onValueChange = {
+                    isErrorDbnr = try {
+                        dbnr = it
+                        it.toInt()
+                        false
+                    } catch (e: NumberFormatException) {
+                        true
+                    }
+                },
+                isError = isErrorDbnr,
                 label = { Text("DBNr") },
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = if (isErrorDbnr) Color.Red else MaterialTheme.colors.primary,
+                    unfocusedBorderColor = if (isErrorDbnr) Color.Red else MaterialTheme.colors.onSurface.copy(
+                        alpha = ContentAlpha.disabled
+                    )
+                )
             )
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
@@ -128,20 +184,50 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(
                 value = factor.toString(),
-                onValueChange = { factor = it.toDouble() },
-                label = { Text("Faktor") },
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = {
+                    isErrorFactor = try {
+                        factor = it
+                        // Feld wird missbraucht und kann im Bit Fall auch für die Bitnummer verwendet werden
+                        if (type == "Bit")
+                        factor.toInt()
+                        else
+                        it.toDouble()
+                        false
+                    } catch (e: NumberFormatException) {
+                        true
+                    }
+
+                },
+                isError = isErrorFactor,
+                label = { Text(if(type == "Bit") "Bit Nummer"  else "Faktor") },
+                modifier = Modifier.fillMaxWidth(),
+                colors = TextFieldDefaults.outlinedTextFieldColors(
+                    focusedBorderColor = if (isErrorFactor) Color.Red else MaterialTheme.colors.primary,
+                    unfocusedBorderColor = if (isErrorFactor) Color.Red else MaterialTheme.colors.onSurface.copy(
+                        alpha = ContentAlpha.disabled
+                    )
+                )
             )
             Spacer(modifier = Modifier.height(16.dp))
             Button(
                 onClick = {
                     Log.d("SaveButton", "Button clicked")
-                    saveSetting(name, type, nr.toInt(), dbnr, unit, factor, context, settings, setting)
+                    saveSetting(
+                        name,
+                        type,
+                        nr.toInt(),
+                        dbnr.toInt(),
+                        unit,
+                        factor.toDouble(),
+                        context,
+                        settings,
+                        setting
+                    )
                     Toast.makeText(context, "Einstellungen gespeichert", Toast.LENGTH_SHORT).show()
                     context.finish()
                 },
-                enabled = !isError,
-                modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
+                enabled = !(isErrorDbnr || isErrorFactor || isErrorNr),
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Icon(
                     imageVector = Icons.Filled.Done,
@@ -160,7 +246,7 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
                     Toast.makeText(context, "Einstellung gelöscht", Toast.LENGTH_SHORT).show()
                     context.finish()
                 },
-                modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
+                modifier = Modifier.align(Alignment.CenterHorizontally)
             ) {
                 Icon(
                     imageVector = Icons.Filled.Delete,

@@ -82,8 +82,6 @@ fun Pumpeninfos(
         values = model.values
     }
     val swipeRefreshState = remember { SwipeRefreshState(isRefreshing) }
-
-
         Scaffold(
             topBar = { TopBar(context) }
         ) { paddingValues ->

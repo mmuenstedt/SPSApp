@@ -46,7 +46,7 @@ class FileHelper {
 
             }
             val initialJson = JSONObject()
-            val exampleSetting = "[{\"name\": \"Pumpenfrequenz\", \"type\": \"W\", \"nr\": 0, \"dbnr\": 10, \"unit\": \"Hz\", \"factor\": 0.9615384615384615}]"
+            val exampleSetting = "[{\"name\": \"Pumpenfrequenz\", \"type\": \"Integer\", \"nr\": 0, \"dbnr\": 10, \"unit\": \"Hz\", \"factor\": 0.9615384615384615}]"
             initialJson.put("settings", JSONArray(exampleSetting))
             saveJsonToFile(context, initialJson)
 

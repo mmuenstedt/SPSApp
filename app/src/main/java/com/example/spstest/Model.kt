@@ -43,9 +43,11 @@ class CountersModel(context: ComponentActivity, var sps: Communication) {
                 val unit = setting.getString("unit")
                 val factor = setting.getDouble("factor")
                 val value = when (type) {
-                    "W" -> sps.GetDBW(nr, dbnr) * factor
-                    "R" -> sps.GetDBR(nr, dbnr) * factor
-                    "D" -> sps.GetDBD(nr, dbnr) * factor
+                    "Integer" -> sps.GetDBW(nr, dbnr) * factor
+                    "Real" -> sps.GetDBR(nr, dbnr) * factor
+                    "Double Integer" -> sps.GetDBD(nr, dbnr) * factor
+                    "Byte" -> sps.GetDBB(nr, dbnr) * factor
+                    "Bit" -> sps.GetDBX(nr, dbnr, factor.toInt())
                     else -> -1.0
                 }
                 val newItem = DataItem(name, "" + value + " " + unit)
