@@ -1,6 +1,8 @@
 package com.example.spstest
 
-import android.R.attr.port
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
@@ -54,13 +56,44 @@ class Communication
     private var messageNr: Byte = 0
     private var plcMpiAddress: Byte = 0
 
+
+    fun connect() {
+        val addr: InetAddress = InetAddress.getByName("172.22.15.119")
+        try {
+            newConnection(addr, 2.toByte())
+        } catch (ioexc: IOException) {
+            Log.d("connectSPS", "Connection failed")
+        }
+    }
+
+    fun setValue(type: String, nr: Int, dbnr: Int, bitnumber: Int, value: String): Boolean  {
+            try {
+                if (!hasConnection()) {
+                    return false
+                }
+                when (type) {
+                    "Integer" -> SetDBW(nr, dbnr, value.toInt())
+                    "Double Integer" -> SetDBD(nr, dbnr, value.toInt())
+                    "Byte" -> SetDBB(nr, dbnr, value.toInt())
+                    "Bit" -> SetDBX(nr, dbnr, bitnumber, value == "true" || value == "1")
+                    "Real" -> SetDBR(nr, dbnr, value.toFloat())
+                    else -> return false
+                }
+                Log.d("setValue", "Success")
+                return true
+            } catch (ioexc: IOException) {
+                Log.d("setValue", ioexc.toString())
+                return false
+            }
+        }
+
     /**
      * method returns if Communication has connection
      *
      * @return connected
      */
     fun hasConnection(): Boolean {
-        if(connection == null){
+        if (connection == null) {
             return false
         }
         return connection!!.isConnected
@@ -79,7 +112,10 @@ class Communication
             closeConnection()
         } // if a connection exist close it
         connection = Socket()
-        connection!!.connect(InetSocketAddress(address, IBHLinkMSG.IBHLINK_PORT), 2000) // establish new TCP/IP connection
+        connection!!.connect(
+            InetSocketAddress(address, IBHLinkMSG.IBHLINK_PORT),
+            2000
+        ) // establish new TCP/IP connection
         input = connection!!.getInputStream() // setup new inputStream
         output = connection!!.getOutputStream() // setup new outputStream
         plcMpiAddress = mpiAddress
@@ -138,10 +174,10 @@ class Communication
             if (input!!.available() == 0) throw IOException("no answer")
         }
         input!!.read(tempData) // read data
-        if(tempData[2] < 0){
-            data= ByteArray(0x100 + tempData[2] +8)
-        }else{
-            data= ByteArray(tempData[2] +8)
+        if (tempData[2] < 0) {
+            data = ByteArray(0x100 + tempData[2] + 8)
+        } else {
+            data = ByteArray(tempData[2] + 8)
         }
         // setup byteArray with length =
         // header(8) + byte which
@@ -781,6 +817,25 @@ class Communication
         vals[1] = (dat % 0x1000000 / 0x10000).toByte().toShort()
         vals[2] = (dat % 0x10000 / 0x100).toByte().toShort()
         vals[3] = (dat % 0x100).toByte().toShort()
+        WriteVals('D', Nr, DBNr, 4, vals)
+    }
+
+    /**
+     * method to write DBR
+     *
+     * @param Nr:   offset number of DBR
+     * @param DBNr: number of DB
+     * @param data: data to write
+     * @throws IOException
+     */
+    @Throws(IOException::class)
+    fun SetDBR(Nr: Int, DBNr: Int, data: Float) {
+        val intBits = java.lang.Float.floatToIntBits(data)
+        val vals = ShortArray(4)
+        vals[0] = (intBits ushr 24).toByte().toShort()
+        vals[1] = (intBits ushr 16 and 0xFF).toByte().toShort()
+        vals[2] = (intBits ushr 8 and 0xFF).toByte().toShort()
+        vals[3] = (intBits and 0xFF).toByte().toShort()
         WriteVals('D', Nr, DBNr, 4, vals)
     }
 

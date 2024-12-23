@@ -10,14 +10,14 @@ import java.net.InetAddress
 
 class Model(context: ComponentActivity, var sps: Communication) {
     var context = context
-    var values  = MutableList(0) { DataItem("", "") }
+    var values = MutableList(0) { DataItem("", "") }
 
     var settings = loadSettings(context)
 
     fun loadSettings(context: ComponentActivity): JSONArray =
         FileHelper.loadJsonFromFile(context).getJSONArray("settings")
 
-    suspend fun refreshSPSData() = withContext(Dispatchers.IO){
+    suspend fun refreshSPSData() = withContext(Dispatchers.IO) {
         settings = loadSettings(context)
         values = MutableList(0) { DataItem("", "") }
         if (sps.hasConnection()) {
@@ -38,28 +38,34 @@ class Model(context: ComponentActivity, var sps: Communication) {
                     else -> "-1.0"
                 }
                 val newItem = DataItem(name, "" + value + " " + unit)
-                if(values.size <= i ) {
-                   values.add(newItem)
-                }else{
+                if (values.size <= i) {
+                    values.add(newItem)
+                } else {
                     values[i] = newItem
                 }
             }
         } else {
             for (i in 0 until settings.length()) {
-                if(values.size <= i ) {
-                    values.add(DataItem(settings.getJSONObject(i).getString("name"), "Connection failed"))
-                }else{
-                    values[i] = DataItem(settings.getJSONObject(i).getString("name"), "Connection failed")
+                if (values.size <= i) {
+                    values.add(
+                        DataItem(
+                            settings.getJSONObject(i).getString("name"),
+                            "Connection failed"
+                        )
+                    )
+                } else {
+                    values[i] =
+                        DataItem(settings.getJSONObject(i).getString("name"), "Connection failed")
                 }
             }
-
-            val addr: InetAddress = InetAddress.getByName("172.22.15.119")
-            try {
-                sps.newConnection(addr, 2.toByte())
-            } catch (ioexc: IOException) {
-                Log.d("refreshVerbrauch", "Connection failed")
-            }
+            connectSPS()
         }
         Log.d("refreshVerbrauch", values.toString())
     }
+
+    private fun connectSPS() {
+        sps.connect()
+    }
+
+
 }

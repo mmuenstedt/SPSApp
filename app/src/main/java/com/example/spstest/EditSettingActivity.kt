@@ -60,7 +60,7 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
     } else {
         setting = JSONObject()
         setting.put("name", "")
-        setting.put("type", "W")
+        setting.put("type", "Integer")
         setting.put("nr", 0)
         setting.put("dbnr", 0)
         setting.put("unit", "")

@@ -8,7 +8,6 @@ import androidx.activity.compose.setContent
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -24,13 +23,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Refresh
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,7 +37,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
@@ -49,11 +45,10 @@ import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.SwipeRefreshState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.util.Collections.rotate
 
 
 class MainActivity : ComponentActivity() {
-    private val sps = Communication()
+    val sps = Communication()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -78,6 +73,7 @@ class MainActivity : ComponentActivity() {
 }
 
 const val parameter_index = "INDEX_PARAM"
+const val parameter_value = "VALUE_PARAM"
 
 @Composable
 fun Pumpeninfos(
@@ -96,7 +92,7 @@ fun Pumpeninfos(
         val job = scope.launch {
             lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
                 while (true) {
-                    if(isAutoRefreshing) {
+                    if (isAutoRefreshing) {
                         model.refreshSPSData()
                         values = model.values
                     }
@@ -136,12 +132,19 @@ fun Pumpeninfos(
                     }
                 },
             ) {
-                ItemList(values, onItemClick = { index ->
+                ItemList(values, onNameClick = { index ->
                     val intent = Intent(context, EditSettingActivity::class.java).apply {
                         putExtra(parameter_index, index)
                     }
                     context.startActivity(intent)
-                })
+                },
+                    onValueClick = { index ->
+                        val intent = Intent(context, SetValueActivity::class.java).apply {
+                            putExtra(parameter_index, index)
+                            putExtra(parameter_value, values[index].value)
+                        }
+                        context.startActivity(intent)
+                    })
             }
         }
     }
@@ -149,7 +152,7 @@ fun Pumpeninfos(
 
 
 @Composable
-fun ItemList(values: List<DataItem>, onItemClick: (Int) -> Unit) {
+fun ItemList(values: List<DataItem>, onNameClick: (Int) -> Unit, onValueClick: (Int) -> Unit) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.Center,
@@ -162,8 +165,8 @@ fun ItemList(values: List<DataItem>, onItemClick: (Int) -> Unit) {
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TableCell(item.name, Modifier.weight(1f), index, onItemClick)
-                TableCell(item.value, Modifier.weight(1f), index, onItemClick)
+                TableCell(item.name, Modifier.weight(1f), index, onNameClick)
+                TableCell(item.value, Modifier.weight(1f), index, onValueClick)
             }
 
         }
@@ -211,12 +214,12 @@ fun TopBar(
     val currentRotation = if (isAutoRefreshing) rotationAngle else 0f
 
     TopAppBar(
-        title = { Text(text = "Pumpeninfos") },
+        title = { Text(text = "SPS Control") },
         actions = {
             IconButton(onClick = { onToggleAutoRefresh(!isAutoRefreshing) }) {
                 Icon(
                     imageVector = Icons.Filled.Refresh,
-                    contentDescription = if (isAutoRefreshing) "Stop Job" else "Start Job",
+                    contentDescription = if (isAutoRefreshing) "Stop Refresh" else "Start Refresh",
                     modifier = Modifier.rotate(currentRotation)
                 )
             }
