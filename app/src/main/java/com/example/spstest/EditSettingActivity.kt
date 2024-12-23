@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.*
 import androidx.compose.material.icons.Icons
@@ -100,7 +99,11 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { dropdownExpanded = true }
-                    .border(1.dp, MaterialTheme.colors.onSurface.copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                    .border(
+                        1.dp,
+                        MaterialTheme.colors.onSurface.copy(alpha = 0.5f),
+                        RoundedCornerShape(4.dp)
+                    )
                     .padding(horizontal = 16.dp, vertical = 16.dp)
             ) {
                 Row(
@@ -189,9 +192,9 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
                         factor = it
                         // Feld wird missbraucht und kann im Bit Fall auch für die Bitnummer verwendet werden
                         if (type == "Bit")
-                        factor.toInt()
+                            factor.toInt()
                         else
-                        it.toDouble()
+                            it.toDouble()
                         false
                     } catch (e: NumberFormatException) {
                         true
@@ -199,7 +202,7 @@ fun SettingMask(index: Int, context: ComponentActivity = MainActivity()) {
 
                 },
                 isError = isErrorFactor,
-                label = { Text(if(type == "Bit") "Bit Nummer"  else "Faktor") },
+                label = { Text(if (type == "Bit") "Bit Nummer" else "Faktor") },
                 modifier = Modifier.fillMaxWidth(),
                 colors = TextFieldDefaults.outlinedTextFieldColors(
                     focusedBorderColor = if (isErrorFactor) Color.Red else MaterialTheme.colors.primary,

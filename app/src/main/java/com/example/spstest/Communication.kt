@@ -1,10 +1,13 @@
 package com.example.spstest
 
+import android.R.attr.port
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream
 import java.net.InetAddress
+import java.net.InetSocketAddress
 import java.net.Socket
+
 
 /*
  * Created on 15.06.2005
@@ -72,8 +75,11 @@ class Communication
      */
     @Throws(IOException::class)
     fun newConnection(address: InetAddress?, mpiAddress: Byte) {
-        if (connection != null && hasConnection()) closeConnection() // if a connection exist close it
-        connection = Socket(address, IBHLinkMSG.IBHLINK_PORT) // establish new TCP/IP connection
+        if (connection != null && hasConnection()) {
+            closeConnection()
+        } // if a connection exist close it
+        connection = Socket()
+        connection!!.connect(InetSocketAddress(address, IBHLinkMSG.IBHLINK_PORT), 2000) // establish new TCP/IP connection
         input = connection!!.getInputStream() // setup new inputStream
         output = connection!!.getOutputStream() // setup new outputStream
         plcMpiAddress = mpiAddress
