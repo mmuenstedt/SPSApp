@@ -702,10 +702,10 @@ class Communication
      */
     @Throws(IOException::class)
     fun GetDBW(Nr: Int, DBNr: Int): Int {
-        val result: Int
+        val unsignedResult: Int
         val readedData = ReadVals('D', Nr, DBNr, 2)
-        result = readedData!![0] * 0x100 + readedData[1]
-        return result
+        unsignedResult = readedData!![0] * 0x100 + readedData[1]
+        return unsignedResult shl 16 shr 16
     }
 
     /**
@@ -722,6 +722,7 @@ class Communication
         val readedData = ReadVals('D', Nr, DBNr, 4)
         result =
             readedData!![0] * 0x1000000 + readedData[1] * 0x10000 + readedData[2] * 0x100 + readedData[3]
+
         return java.lang.Float.intBitsToFloat(result)
     }
 
@@ -735,10 +736,11 @@ class Communication
      */
     @Throws(IOException::class)
     fun GetDBB(Nr: Int, DBNr: Int): Int {
-        val result: Int
+        val unsignedResult: Int
         val readedData = ReadVals('D', Nr, DBNr, 1)
-        result = readedData!![0].toInt()
-        return result
+        unsignedResult = readedData!![0].toInt()
+        // Konvertieren des unsigned-Werts in einen signed-Wert
+        return unsignedResult shl 24 shr 24
     }
 
     /**
@@ -751,383 +753,388 @@ class Communication
      */
     @Throws(IOException::class)
     fun GetDBD(Nr: Int, DBNr: Int): Int {
-        val result: Int
         val readedData = ReadVals('D', Nr, DBNr, 4)
-        result =
+        val unsignedResult =
             readedData!![0] * 0x1000000 + readedData[1] * 0x10000 + readedData[2] * 0x100 + readedData[3]
-        return result
-    }
-
-    /**
-     * method to read DBX
-     *
-     * @param Nr:    offset number of DBX
-     * @param DBNr:  number of DB
-     * @param BitNr: bitnumber of DBX
-     * @return read data
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun GetDBX(Nr: Int, DBNr: Int, BitNr: Int): Boolean {
-        val result: Boolean
-        val readedData = ReadVals('D', Nr, DBNr, 1)
-        var digit = 1
-        digit = digit shl BitNr
-        result = readedData!![0].toInt() and digit == digit
-        return result
-    }
-
-    /**
-     * method to write DBB
-     *
-     * @param Nr:   offset number of DBB
-     * @param DBNr: number of DB
-     * @param data: data to write
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun SetDBB(Nr: Int, DBNr: Int, data: Int) {
-        WriteVals('D', Nr, DBNr, 1, shortArrayOf(data.toByte().toShort()))
-    }
-
-    /**
-     * method to write DBW
-     *
-     * @param Nr:   offset number of DBW
-     * @param DBNr: number of DB
-     * @param data: data to write
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun SetDBW(Nr: Int, DBNr: Int, data: Int) {
-        var data = data
-        data = if (data.toShort() < 0) 0x10000 + data.toShort() else data.toShort().toInt()
-        val vals = ShortArray(2)
-        vals[0] = (data / 0x100).toByte().toShort()
-        vals[1] = (data and 0xFF).toByte().toShort()
-        WriteVals('D', Nr, DBNr, 2, vals)
-    }
-
-    /**
-     * method to write DBD
-     *
-     * @param Nr:   offset number of DBD
-     * @param DBNr: number of DB
-     * @param data: data to write
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun SetDBD(Nr: Int, DBNr: Int, data: Int) {
-        val dat = if (data < 0) 0x100000000L + data else data.toLong()
-        val vals = ShortArray(4)
-        vals[0] = (dat / 0x1000000).toByte().toShort()
-        vals[1] = (dat % 0x1000000 / 0x10000).toByte().toShort()
-        vals[2] = (dat % 0x10000 / 0x100).toByte().toShort()
-        vals[3] = (dat % 0x100).toByte().toShort()
-        WriteVals('D', Nr, DBNr, 4, vals)
-    }
-
-    /**
-     * method to write DBR
-     *
-     * @param Nr:   offset number of DBR
-     * @param DBNr: number of DB
-     * @param data: data to write
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun SetDBR(Nr: Int, DBNr: Int, data: Float) {
-        val intBits = java.lang.Float.floatToIntBits(data)
-        val vals = ShortArray(4)
-        vals[0] = (intBits ushr 24).toByte().toShort()
-        vals[1] = (intBits ushr 16 and 0xFF).toByte().toShort()
-        vals[2] = (intBits ushr 8 and 0xFF).toByte().toShort()
-        vals[3] = (intBits and 0xFF).toByte().toShort()
-        WriteVals('D', Nr, DBNr, 4, vals)
-    }
-
-    /**
-     * method to write DBX
-     *
-     * @param Nr:    offset number of DBX
-     * @param DBNr:  number of DB
-     * @param BitNr: bitnumber of DBX
-     * @param data:  data to write
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun SetDBX(Nr: Int, DBNr: Int, BitNr: Int, data: Boolean) {
-        var stored = ReadVals('D', Nr, DBNr, 1)!![0]
-        var digit = 1
-        digit = digit shl BitNr
-
-        val vals: ShortArray
-        stored = (stored.toInt() xor digit).toShort()
-        vals = shortArrayOf(stored)
-        WriteVals('D', Nr, DBNr, 1, vals)
-
-    }
-
-    /**
-     * method to read counters
-     *
-     * @param Nr:     number of counter
-     * @param Anzahl: size of counters
-     * @return readed counters
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun GetZ(Nr: Int, Anzahl: Int): IntArray {
-        val data = IntArray(Anzahl)
-        val results = ReadVals('Z', Nr, 0, Anzahl)
-        for (i in results!!.indices) data[i] = if (results[i] < 0) 512 + results[i] else results[i]
-            .toInt()
-        return data
-    }
-
-    /**
-     * method to read counter
-     *
-     * @param Nr: number of counter
-     * @return readed counter
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun GetZ(Nr: Int): Int {
-        return GetZ(Nr, 1)[0]
-    }
-
-    /**
-     * method to read timers
-     *
-     * @param Nr:     number of timer
-     * @param Anzahl: size of timers
-     * @return readed timers
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun GetT(Nr: Int, Anzahl: Int): IntArray {
-        val data = IntArray(Anzahl)
-        val results = ReadVals('T', Nr, 0, Anzahl)
-        for (i in results!!.indices) data[i] = if (results[i] < 0) 512 + results[i] else results[i]
-            .toInt()
-        return data
-    }
-
-    /**
-     * method to read timer
-     *
-     * @param Nr: number of timer
-     * @return readed timer
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    fun GetT(Nr: Int): Int {
-        return GetT(Nr, 1)[0]
-    }
-
-    /**
-     * method to change IEEE into MC7
-     *
-     * @param val: IEEE number
-     * @return MC7 number
-     */
-    fun IEEEtoMC7(`val`: Float): Int {
-        var cnv = `val`.toInt()
-        val data = ShortArray(4)
-        data[0] = (cnv / 0x1000000).toShort()
-        data[1] = (cnv % 0x1000000 / 0x10000).toShort()
-        data[2] = (cnv % 0x10000 / 0x100).toShort()
-        data[3] = (cnv % 0x100).toShort()
-        if (data[0] < 0) data[0] = (0x100 + data[0]).toShort()
-        cnv = (data[3] * 0x1000000 + data[2] * 0x10000 + data[1] * 0x100 + data[0])
-        return cnv
-    }
-
-    /**
-     * method to change MC7 into IEEE
-     *
-     * @param val: MC7 number
-     * @return IEEE number
-     */
-    fun MC7toIEEE(`val`: Int): Float {
-        var `val` = `val`
-        val data = ShortArray(4)
-        data[0] = (`val` / 0x1000000).toShort()
-        data[1] = (`val` % 0x1000000 / 0x10000).toShort()
-        data[2] = (`val` % 0x10000 / 0x100).toShort()
-        data[3] = (`val` % 0x100).toShort()
-        if (data[0] < 0) data[0] = (0x100 + data[0]).toShort()
-        `val` =
-            (data[3].toLong() * 0x1000000 + data[2] * 0x10000 + data[1] * 0x100 + data[0]).toInt()
-        return `val`.toFloat()
-    }
-
-    /**
-     * method to check if size is inside spezifications
-     *
-     * @param READ_WRITE: size of maximal data to write
-     * @param msg:        object to setup
-     * @param Typ:        type of periphery
-     * @param Nr:         address number of periphery
-     * @param DBNr:       datablock number
-     * @param size:       size of data to write
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    private fun checkType(
-        READ_WRITE: Int,
-        msg: IBHLinkMSG,
-        Typ: Char,
-        Nr: Int,
-        DBNr: Int,
-        size: Int
-    ) {
-        when (Typ) {
-            'E' -> {
-                if (size > READ_WRITE) throw IOException("size out of bounds")
-                msg.b = IBHLinkMSG.MPI_READ_WRITE_IO
-                msg.data_area = IBHLinkMSG.INPUT_AREA
-                msg.data_adr = (Nr and 0xFFFF).toShort()
-                msg.data_cnt = (size and 0xFF).toByte()
-                msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
-            }
-
-            'A' -> {
-                if (size > READ_WRITE) throw IOException("size out of bounds")
-                msg.b = IBHLinkMSG.MPI_READ_WRITE_IO
-                msg.data_area = IBHLinkMSG.OUTPUT_AREA
-                msg.data_adr = (Nr and 0xFFFF).toShort()
-                msg.data_cnt = (size and 0xFF).toByte()
-                msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
-            }
-
-            'M' -> {
-                if (size > READ_WRITE) throw IOException("size out of bounds")
-                msg.b = IBHLinkMSG.MPI_READ_WRITE_M
-                msg.data_adr = (Nr and 0xFFFF).toShort()
-                msg.data_cnt = (size and 0xFF).toByte()
-                msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
-            }
-
-            'D' -> {
-                if (size > READ_WRITE) throw IOException("size out of bounds")
-                msg.b = IBHLinkMSG.MPI_READ_WRITE_DB
-                msg.data_area = ((Nr and 0xFF00) / 0x100).toByte()
-                msg.data_adr = (DBNr and 0xFFFF).toShort()
-                msg.data_idx = (Nr and 0xFF).toByte()
-                msg.data_cnt = (size and 0xFF).toByte()
-                msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
-            }
-
-            'T' -> {
-                if (size > READ_WRITE / 2) throw IOException("size out of bounds")
-                msg.b = IBHLinkMSG.MPI_READ_WRITE_TIM
-                msg.data_adr = (Nr and 0xFFFF).toShort()
-                msg.data_cnt = (size and 0xFF).toByte()
-                msg.data_type = IBHLinkMSG.TASK_TDT_UINT16
-            }
-
-            'Z' -> {
-                if (size > READ_WRITE / 2) throw IOException("size out of bounds")
-                msg.b = IBHLinkMSG.MPI_READ_WRITE_CNT
-                msg.data_adr = (Nr and 0xFFFF).toShort()
-                msg.data_cnt = (size and 0xFF).toByte()
-                msg.data_type = IBHLinkMSG.TASK_TDT_UINT16
-            }
-
-            else -> throw IOException("type out of index")
+        // Konvertieren des unsigned-Werts in einen signed-Wert
+        return if (unsignedResult and 0x80000000.toInt() != 0) {
+            unsignedResult or 0xFFFFFFFF.toInt().inv()
+        } else {
+            unsignedResult
         }
     }
 
-    /**
-     * method to check if received data is valid
-     *
-     * @param dataStream: received object
-     * @param msg:        sent object
-     * @throws IOException
-     */
-    @Throws(IOException::class)
-    private fun checkReturn(dataStream: IBHLinkMSG, msg: IBHLinkMSG) {
-        var consistentData = true
-        if (dataStream.rx != IBHLinkMSG.HOST) consistentData = false
-        if (dataStream.tx != IBHLinkMSG.MPI_TASK) consistentData = false
-        if (dataStream.nr != msg.nr) consistentData = false
-        if ((dataStream.a < IBHLinkMSG.MPI_READ_WRITE_DB) or (dataStream.a > IBHLinkMSG.MPI_READ_WRITE_TIM)) if (dataStream.a != IBHLinkMSG.MPI_DISCONNECT) consistentData =
-            false
-        if (dataStream.b.toInt() != 0) consistentData = false
-        if (dataStream.e.toInt() != 0) consistentData = false
-        if ((dataStream.device_adr < 0) or (dataStream.device_adr > 126)) consistentData = false
-        when (dataStream.a) {
-            IBHLinkMSG.MPI_READ_WRITE_DB -> {
-                if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT8) consistentData = false
-                if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
-                    false
-            }
 
-            IBHLinkMSG.MPI_GET_OP_STATUS -> {
-                if (dataStream.ln.toInt() != 10) consistentData = false
-                if ((dataStream.data_area.toInt() != 0) or (dataStream.data_adr.toInt() != 0) or (dataStream.data_idx.toInt() != 0
-                            ) or (dataStream.data_cnt.toInt() != 0) or (dataStream.data_type.toInt() != 0) or (dataStream.function.toInt() != 0)
-                ) consistentData = false
-            }
+/**
+ * method to read DBX
+ *
+ * @param Nr:    offset number of DBX
+ * @param DBNr:  number of DB
+ * @param BitNr: bitnumber of DBX
+ * @return read data
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun GetDBX(Nr: Int, DBNr: Int, BitNr: Int): Boolean {
+    val result: Boolean
+    val readedData = ReadVals('D', Nr, DBNr, 1)
+    var digit = 1
+    digit = digit shl BitNr
+    result = readedData!![0].toInt() and digit == digit
+    return result
+}
 
-            IBHLinkMSG.MPI_READ_WRITE_M -> {
-                if ((dataStream.data_area.toInt() != 0) or (dataStream.data_idx.toInt() != 0)) consistentData =
-                    false
-                if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT8) consistentData = false
-                if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
-                    false
-            }
+/**
+ * method to write DBB
+ *
+ * @param Nr:   offset number of DBB
+ * @param DBNr: number of DB
+ * @param data: data to write
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun SetDBB(Nr: Int, DBNr: Int, data: Int) {
+    WriteVals('D', Nr, DBNr, 1, shortArrayOf(data.toByte().toShort()))
+}
 
-            IBHLinkMSG.MPI_READ_WRITE_IO -> {
-                if ((dataStream.data_area < IBHLinkMSG.INPUT_AREA) or (dataStream.data_area > IBHLinkMSG.OUTPUT_AREA)) consistentData =
-                    false
-                if (dataStream.data_idx.toInt() != 0) consistentData = false
-                if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT8) consistentData = false
-                if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
-                    false
-            }
+/**
+ * method to write DBW
+ *
+ * @param Nr:   offset number of DBW
+ * @param DBNr: number of DB
+ * @param data: data to write
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun SetDBW(Nr: Int, DBNr: Int, data: Int) {
+    var data = data
+    data = if (data.toShort() < 0) 0x10000 + data.toShort() else data.toShort().toInt()
+    val vals = ShortArray(2)
+    vals[0] = (data / 0x100).toByte().toShort()
+    vals[1] = (data and 0xFF).toByte().toShort()
+    WriteVals('D', Nr, DBNr, 2, vals)
+}
 
-            IBHLinkMSG.MPI_READ_WRITE_CNT, IBHLinkMSG.MPI_READ_WRITE_TIM -> {
-                if ((dataStream.data_area.toInt() != 0) or (dataStream.data_idx.toInt() != 0)) consistentData =
-                    false
-                if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT16) consistentData = false
-                if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
-                    false
-            }
+/**
+ * method to write DBD
+ *
+ * @param Nr:   offset number of DBD
+ * @param DBNr: number of DB
+ * @param data: data to write
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun SetDBD(Nr: Int, DBNr: Int, data: Int) {
+    val dat = if (data < 0) 0x100000000L + data else data.toLong()
+    val vals = ShortArray(4)
+    vals[0] = (dat / 0x1000000).toByte().toShort()
+    vals[1] = (dat % 0x1000000 / 0x10000).toByte().toShort()
+    vals[2] = (dat % 0x10000 / 0x100).toByte().toShort()
+    vals[3] = (dat % 0x100).toByte().toShort()
+    WriteVals('D', Nr, DBNr, 4, vals)
+}
 
-            IBHLinkMSG.MPI_DISCONNECT -> {
-                if (dataStream.ln != IBHLinkMSG.MSG_PARAM_LEN) consistentData = false
-                if ((dataStream.data_area.toInt() != 0) or (dataStream.data_adr.toInt() != 0) or (dataStream.data_idx.toInt() != 0
-                            ) or (dataStream.data_cnt.toInt() != 0) or (dataStream.data_type.toInt() != 0) or (dataStream.function.toInt() != 0)
-                ) consistentData = false
-            }
+/**
+ * method to write DBR
+ *
+ * @param Nr:   offset number of DBR
+ * @param DBNr: number of DB
+ * @param data: data to write
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun SetDBR(Nr: Int, DBNr: Int, data: Float) {
+    val intBits = java.lang.Float.floatToIntBits(data)
+    val vals = ShortArray(4)
+    vals[0] = (intBits ushr 24).toByte().toShort()
+    vals[1] = (intBits ushr 16 and 0xFF).toByte().toShort()
+    vals[2] = (intBits ushr 8 and 0xFF).toByte().toShort()
+    vals[3] = (intBits and 0xFF).toByte().toShort()
+    WriteVals('D', Nr, DBNr, 4, vals)
+}
+
+/**
+ * method to write DBX
+ *
+ * @param Nr:    offset number of DBX
+ * @param DBNr:  number of DB
+ * @param BitNr: bitnumber of DBX
+ * @param data:  data to write
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun SetDBX(Nr: Int, DBNr: Int, BitNr: Int, data: Boolean) {
+    var stored = ReadVals('D', Nr, DBNr, 1)!![0]
+    var digit = 1
+    digit = digit shl BitNr
+
+    val vals: ShortArray
+    stored = (stored.toInt() xor digit).toShort()
+    vals = shortArrayOf(stored)
+    WriteVals('D', Nr, DBNr, 1, vals)
+
+}
+
+/**
+ * method to read counters
+ *
+ * @param Nr:     number of counter
+ * @param Anzahl: size of counters
+ * @return readed counters
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun GetZ(Nr: Int, Anzahl: Int): IntArray {
+    val data = IntArray(Anzahl)
+    val results = ReadVals('Z', Nr, 0, Anzahl)
+    for (i in results!!.indices) data[i] = if (results[i] < 0) 512 + results[i] else results[i]
+        .toInt()
+    return data
+}
+
+/**
+ * method to read counter
+ *
+ * @param Nr: number of counter
+ * @return readed counter
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun GetZ(Nr: Int): Int {
+    return GetZ(Nr, 1)[0]
+}
+
+/**
+ * method to read timers
+ *
+ * @param Nr:     number of timer
+ * @param Anzahl: size of timers
+ * @return readed timers
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun GetT(Nr: Int, Anzahl: Int): IntArray {
+    val data = IntArray(Anzahl)
+    val results = ReadVals('T', Nr, 0, Anzahl)
+    for (i in results!!.indices) data[i] = if (results[i] < 0) 512 + results[i] else results[i]
+        .toInt()
+    return data
+}
+
+/**
+ * method to read timer
+ *
+ * @param Nr: number of timer
+ * @return readed timer
+ * @throws IOException
+ */
+@Throws(IOException::class)
+fun GetT(Nr: Int): Int {
+    return GetT(Nr, 1)[0]
+}
+
+/**
+ * method to change IEEE into MC7
+ *
+ * @param val: IEEE number
+ * @return MC7 number
+ */
+fun IEEEtoMC7(`val`: Float): Int {
+    var cnv = `val`.toInt()
+    val data = ShortArray(4)
+    data[0] = (cnv / 0x1000000).toShort()
+    data[1] = (cnv % 0x1000000 / 0x10000).toShort()
+    data[2] = (cnv % 0x10000 / 0x100).toShort()
+    data[3] = (cnv % 0x100).toShort()
+    if (data[0] < 0) data[0] = (0x100 + data[0]).toShort()
+    cnv = (data[3] * 0x1000000 + data[2] * 0x10000 + data[1] * 0x100 + data[0])
+    return cnv
+}
+
+/**
+ * method to change MC7 into IEEE
+ *
+ * @param val: MC7 number
+ * @return IEEE number
+ */
+fun MC7toIEEE(`val`: Int): Float {
+    var `val` = `val`
+    val data = ShortArray(4)
+    data[0] = (`val` / 0x1000000).toShort()
+    data[1] = (`val` % 0x1000000 / 0x10000).toShort()
+    data[2] = (`val` % 0x10000 / 0x100).toShort()
+    data[3] = (`val` % 0x100).toShort()
+    if (data[0] < 0) data[0] = (0x100 + data[0]).toShort()
+    `val` =
+        (data[3].toLong() * 0x1000000 + data[2] * 0x10000 + data[1] * 0x100 + data[0]).toInt()
+    return `val`.toFloat()
+}
+
+/**
+ * method to check if size is inside spezifications
+ *
+ * @param READ_WRITE: size of maximal data to write
+ * @param msg:        object to setup
+ * @param Typ:        type of periphery
+ * @param Nr:         address number of periphery
+ * @param DBNr:       datablock number
+ * @param size:       size of data to write
+ * @throws IOException
+ */
+@Throws(IOException::class)
+private fun checkType(
+    READ_WRITE: Int,
+    msg: IBHLinkMSG,
+    Typ: Char,
+    Nr: Int,
+    DBNr: Int,
+    size: Int
+) {
+    when (Typ) {
+        'E' -> {
+            if (size > READ_WRITE) throw IOException("size out of bounds")
+            msg.b = IBHLinkMSG.MPI_READ_WRITE_IO
+            msg.data_area = IBHLinkMSG.INPUT_AREA
+            msg.data_adr = (Nr and 0xFFFF).toShort()
+            msg.data_cnt = (size and 0xFF).toByte()
+            msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
         }
-        if (!consistentData) throw IOException("no consistent data")
-        when (dataStream.f) {
-            IBHLinkMSG.CON_OK -> {}
-            IBHLinkMSG.CON_UE -> throw IOException("timeout from remote station")
-            IBHLinkMSG.CON_RR -> throw IOException("resource unavailable")
-            IBHLinkMSG.CON_RS -> throw IOException("requested function of master is not activated within the remote station.")
-            IBHLinkMSG.CON_NA -> throw IOException("no response of the remote station")
-            IBHLinkMSG.CON_DS -> throw IOException("master not into the logical token ring")
-            IBHLinkMSG.CON_LR -> throw IOException("Resource of the local FDL controller not available or not sifficient")
-            IBHLinkMSG.CON_IV -> throw IOException("the specified msg.data_cnt parameter invalid")
-            IBHLinkMSG.CON_TO -> throw IOException(
-                "timeout, the request message was accepted but no inication is sent back by the remote station"
-            )
 
-            IBHLinkMSG.CON_SE -> throw IOException(
-                "Seqence fault, internal state machine error. Remote station does not react like awaited or a reconnection is already open or device has no SAPs left to open connection channel"
-            )
+        'A' -> {
+            if (size > READ_WRITE) throw IOException("size out of bounds")
+            msg.b = IBHLinkMSG.MPI_READ_WRITE_IO
+            msg.data_area = IBHLinkMSG.OUTPUT_AREA
+            msg.data_adr = (Nr and 0xFFFF).toShort()
+            msg.data_cnt = (size and 0xFF).toByte()
+            msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
+        }
 
-            IBHLinkMSG.REJ_IV -> throw IOException("specified offset address ut of limits or not known in the remote station")
-            IBHLinkMSG.REJ_PDU -> throw IOException("wrong PDU coding in the MPI response of the remote station")
-            IBHLinkMSG.REJ_OP -> throw IOException("specific length to write or to read results in an access otuside the limits")
-            else -> throw IOException(
-                "communication malfunction, not able to resolve Errorcode " + dataStream.f + " in dec"
-            )
+        'M' -> {
+            if (size > READ_WRITE) throw IOException("size out of bounds")
+            msg.b = IBHLinkMSG.MPI_READ_WRITE_M
+            msg.data_adr = (Nr and 0xFFFF).toShort()
+            msg.data_cnt = (size and 0xFF).toByte()
+            msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
+        }
+
+        'D' -> {
+            if (size > READ_WRITE) throw IOException("size out of bounds")
+            msg.b = IBHLinkMSG.MPI_READ_WRITE_DB
+            msg.data_area = ((Nr and 0xFF00) / 0x100).toByte()
+            msg.data_adr = (DBNr and 0xFFFF).toShort()
+            msg.data_idx = (Nr and 0xFF).toByte()
+            msg.data_cnt = (size and 0xFF).toByte()
+            msg.data_type = IBHLinkMSG.TASK_TDT_UINT8
+        }
+
+        'T' -> {
+            if (size > READ_WRITE / 2) throw IOException("size out of bounds")
+            msg.b = IBHLinkMSG.MPI_READ_WRITE_TIM
+            msg.data_adr = (Nr and 0xFFFF).toShort()
+            msg.data_cnt = (size and 0xFF).toByte()
+            msg.data_type = IBHLinkMSG.TASK_TDT_UINT16
+        }
+
+        'Z' -> {
+            if (size > READ_WRITE / 2) throw IOException("size out of bounds")
+            msg.b = IBHLinkMSG.MPI_READ_WRITE_CNT
+            msg.data_adr = (Nr and 0xFFFF).toShort()
+            msg.data_cnt = (size and 0xFF).toByte()
+            msg.data_type = IBHLinkMSG.TASK_TDT_UINT16
+        }
+
+        else -> throw IOException("type out of index")
+    }
+}
+
+/**
+ * method to check if received data is valid
+ *
+ * @param dataStream: received object
+ * @param msg:        sent object
+ * @throws IOException
+ */
+@Throws(IOException::class)
+private fun checkReturn(dataStream: IBHLinkMSG, msg: IBHLinkMSG) {
+    var consistentData = true
+    if (dataStream.rx != IBHLinkMSG.HOST) consistentData = false
+    if (dataStream.tx != IBHLinkMSG.MPI_TASK) consistentData = false
+    if (dataStream.nr != msg.nr) consistentData = false
+    if ((dataStream.a < IBHLinkMSG.MPI_READ_WRITE_DB) or (dataStream.a > IBHLinkMSG.MPI_READ_WRITE_TIM)) if (dataStream.a != IBHLinkMSG.MPI_DISCONNECT) consistentData =
+        false
+    if (dataStream.b.toInt() != 0) consistentData = false
+    if (dataStream.e.toInt() != 0) consistentData = false
+    if ((dataStream.device_adr < 0) or (dataStream.device_adr > 126)) consistentData = false
+    when (dataStream.a) {
+        IBHLinkMSG.MPI_READ_WRITE_DB -> {
+            if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT8) consistentData = false
+            if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
+                false
+        }
+
+        IBHLinkMSG.MPI_GET_OP_STATUS -> {
+            if (dataStream.ln.toInt() != 10) consistentData = false
+            if ((dataStream.data_area.toInt() != 0) or (dataStream.data_adr.toInt() != 0) or (dataStream.data_idx.toInt() != 0
+                        ) or (dataStream.data_cnt.toInt() != 0) or (dataStream.data_type.toInt() != 0) or (dataStream.function.toInt() != 0)
+            ) consistentData = false
+        }
+
+        IBHLinkMSG.MPI_READ_WRITE_M -> {
+            if ((dataStream.data_area.toInt() != 0) or (dataStream.data_idx.toInt() != 0)) consistentData =
+                false
+            if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT8) consistentData = false
+            if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
+                false
+        }
+
+        IBHLinkMSG.MPI_READ_WRITE_IO -> {
+            if ((dataStream.data_area < IBHLinkMSG.INPUT_AREA) or (dataStream.data_area > IBHLinkMSG.OUTPUT_AREA)) consistentData =
+                false
+            if (dataStream.data_idx.toInt() != 0) consistentData = false
+            if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT8) consistentData = false
+            if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
+                false
+        }
+
+        IBHLinkMSG.MPI_READ_WRITE_CNT, IBHLinkMSG.MPI_READ_WRITE_TIM -> {
+            if ((dataStream.data_area.toInt() != 0) or (dataStream.data_idx.toInt() != 0)) consistentData =
+                false
+            if (dataStream.data_type != IBHLinkMSG.TASK_TDT_UINT16) consistentData = false
+            if ((dataStream.function < IBHLinkMSG.TASK_TFC_READ) or (dataStream.function > IBHLinkMSG.TASK_TFC_WRITE)) consistentData =
+                false
+        }
+
+        IBHLinkMSG.MPI_DISCONNECT -> {
+            if (dataStream.ln != IBHLinkMSG.MSG_PARAM_LEN) consistentData = false
+            if ((dataStream.data_area.toInt() != 0) or (dataStream.data_adr.toInt() != 0) or (dataStream.data_idx.toInt() != 0
+                        ) or (dataStream.data_cnt.toInt() != 0) or (dataStream.data_type.toInt() != 0) or (dataStream.function.toInt() != 0)
+            ) consistentData = false
         }
     }
+    if (!consistentData) throw IOException("no consistent data")
+    when (dataStream.f) {
+        IBHLinkMSG.CON_OK -> {}
+        IBHLinkMSG.CON_UE -> throw IOException("timeout from remote station")
+        IBHLinkMSG.CON_RR -> throw IOException("resource unavailable")
+        IBHLinkMSG.CON_RS -> throw IOException("requested function of master is not activated within the remote station.")
+        IBHLinkMSG.CON_NA -> throw IOException("no response of the remote station")
+        IBHLinkMSG.CON_DS -> throw IOException("master not into the logical token ring")
+        IBHLinkMSG.CON_LR -> throw IOException("Resource of the local FDL controller not available or not sifficient")
+        IBHLinkMSG.CON_IV -> throw IOException("the specified msg.data_cnt parameter invalid")
+        IBHLinkMSG.CON_TO -> throw IOException(
+            "timeout, the request message was accepted but no inication is sent back by the remote station"
+        )
+
+        IBHLinkMSG.CON_SE -> throw IOException(
+            "Seqence fault, internal state machine error. Remote station does not react like awaited or a reconnection is already open or device has no SAPs left to open connection channel"
+        )
+
+        IBHLinkMSG.REJ_IV -> throw IOException("specified offset address ut of limits or not known in the remote station")
+        IBHLinkMSG.REJ_PDU -> throw IOException("wrong PDU coding in the MPI response of the remote station")
+        IBHLinkMSG.REJ_OP -> throw IOException("specific length to write or to read results in an access otuside the limits")
+        else -> throw IOException(
+            "communication malfunction, not able to resolve Errorcode " + dataStream.f + " in dec"
+        )
+    }
+}
 }
