@@ -60,32 +60,38 @@ class Communication
     fun connect() {
         val addr: InetAddress = InetAddress.getByName("172.22.15.119")
         try {
-            newConnection(addr, 2.toByte())
-        } catch (ioexc: IOException) {
+            if (!hasConnection()) {
+                newConnection(addr, 2.toByte())
+            }
+        } catch (
+            ioexc: IOException
+        ) {
+            ioexc.printStackTrace()
             Log.d("connectSPS", "Connection failed")
         }
     }
 
-    fun setValue(type: String, nr: Int, dbnr: Int, bitnumber: Int, value: String): Boolean  {
-            try {
-                if (!hasConnection()) {
-                    return false
-                }
-                when (type) {
-                    "Integer" -> SetDBW(nr, dbnr, value.toInt())
-                    "Double Integer" -> SetDBD(nr, dbnr, value.toInt())
-                    "Byte" -> SetDBB(nr, dbnr, value.toInt())
-                    "Bit" -> SetDBX(nr, dbnr, bitnumber, value == "true" || value == "1")
-                    "Real" -> SetDBR(nr, dbnr, value.toFloat())
-                    else -> return false
-                }
-                Log.d("setValue", "Success")
-                return true
-            } catch (ioexc: IOException) {
-                Log.d("setValue", ioexc.toString())
+    fun setValue(type: String, nr: Int, dbnr: Int, bitnumber: Int, value: String): Boolean {
+        try {
+            if (!hasConnection()) {
+                Log.e("setValue", "No Connection")
                 return false
             }
+            when (type) {
+                "Integer" -> SetDBW(nr, dbnr, value.toInt())
+                "Double Integer" -> SetDBD(nr, dbnr, value.toInt())
+                "Byte" -> SetDBB(nr, dbnr, value.toInt())
+                "Bit" -> SetDBX(nr, dbnr, bitnumber, value == "true" || value == "1")
+                "Real" -> SetDBR(nr, dbnr, value.toFloat())
+                else -> return false
+            }
+            Log.d("setValue", "Success")
+            return true
+        } catch (ioexc: IOException) {
+            ioexc.printStackTrace()
+            return false
         }
+    }
 
     /**
      * method returns if Communication has connection
@@ -121,7 +127,8 @@ class Communication
         plcMpiAddress = mpiAddress
         messageNr = 0
         try {
-            GetM(0, 0) // read flag 0.0 to test MPI/DP-Address
+            val status = GetM(0, 0) // read flag 0.0 to test MPI/DP-Address
+            Log.d("newConnection", "connectionstatus: $status")
         } catch (ioexc: IOException) {
             closeConnection()
             throw ioexc // throw exception upwards
@@ -850,16 +857,15 @@ class Communication
      */
     @Throws(IOException::class)
     fun SetDBX(Nr: Int, DBNr: Int, BitNr: Int, data: Boolean) {
-        var stored = ReadVals('D', Nr, 0, 1)!![0]
+        var stored = ReadVals('D', Nr, DBNr, 1)!![0]
         var digit = 1
         digit = digit shl BitNr
-        val actual = stored.toInt() and digit == digit
-        if (!actual) {
-            val vals: ShortArray
-            stored = (stored.toInt() xor digit).toShort()
-            vals = shortArrayOf(stored)
-            WriteVals('D', Nr, DBNr, 1, vals)
-        }
+
+        val vals: ShortArray
+        stored = (stored.toInt() xor digit).toShort()
+        vals = shortArrayOf(stored)
+        WriteVals('D', Nr, DBNr, 1, vals)
+
     }
 
     /**

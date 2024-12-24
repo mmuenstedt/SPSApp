@@ -38,13 +38,14 @@ class SetValueActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
         val index = intent.getIntExtra(parameter_index, -1)
         var currentValue = intent.getStringExtra(parameter_value)
         if (currentValue == null) {
             currentValue = ""
         }
         setContent {
-            SetValueMask(index, currentValue, this)
+            SetValueMask( index, currentValue, this)
         }
     }
 }
@@ -53,12 +54,10 @@ class SetValueActivity : ComponentActivity() {
 fun SetValueMask(index: Int, currentValue: String, context: ComponentActivity = MainActivity()) {
     var settings = FileHelper.loadJsonFromFile(context)
     var settingsArray = settings.getJSONArray("settings")
-    var setting: JSONObject
     var isErrorValue by remember { mutableStateOf(false) }
     var value by remember { mutableStateOf(currentValue) }
-    val sps = Communication()
 
-    setting = settingsArray.getJSONObject(index)
+    var setting: JSONObject = settingsArray.getJSONObject(index)
 
     var name = setting.getString("name")
     var type = setting.getString("type")
@@ -121,7 +120,7 @@ fun SetValueMask(index: Int, currentValue: String, context: ComponentActivity = 
                 onClick = {
                     Log.d("SetValueButton", "Button clicked")
                     scope.launch {
-                        fetchData(sps, context, type, nr, dbnr, factor, value)
+                        setValue(context, type, nr, dbnr, factor, value)
                     }
                     context.finish()
                 },
@@ -153,8 +152,7 @@ fun SetValueMask(index: Int, currentValue: String, context: ComponentActivity = 
     }
 }
 
-suspend fun fetchData(
-    sps: Communication,
+suspend fun setValue(
     context: ComponentActivity,
     type: String,
     nr: String,
@@ -164,10 +162,15 @@ suspend fun fetchData(
 ) {
     try{
         withContext(Dispatchers.IO) {
-            if (!sps.hasConnection()) {
-                sps.connect()
+            if (SPSManager.sps == null) {
+                SPSManager.sps = Communication()
             }
-            if (sps.setValue(
+            if (!SPSManager.sps!!.hasConnection()) {
+                SPSManager.sps!!.connect()
+            }
+
+            Log.d("setValue", "Value: $value" + " Type: $type" + " Nr: $nr" + " DBNR: $dbnr" + " Bitnummer: $bitnummer")
+            if (SPSManager.sps!!.setValue(
                     type,
                     nr.toInt(),
                     dbnr.toInt(),

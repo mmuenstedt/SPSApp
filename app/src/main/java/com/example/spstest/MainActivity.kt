@@ -48,10 +48,10 @@ import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
-    val sps = Communication()
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        val sps = Communication()
+        SPSManager.sps = sps
         setContent {
             MaterialTheme {
                 // A surface container using the 'background' color from the theme
@@ -59,7 +59,7 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colors.background
                 ) {
-                    Pumpeninfos(sps, this)
+                    Pumpeninfos( this)
                 }
             }
         }
@@ -77,11 +77,10 @@ const val parameter_value = "VALUE_PARAM"
 
 @Composable
 fun Pumpeninfos(
-    sps: Communication = Communication(),
     context: ComponentActivity = MainActivity()
 ) {
     val scope = rememberCoroutineScope()
-    val model by remember { mutableStateOf(Model(context, sps)) }
+    val model by remember { mutableStateOf(Model(context)) }
     var values by remember { mutableStateOf(model.values) }
     var isRefreshing by remember { mutableStateOf(false) }
     var isAutoRefreshing by remember { mutableStateOf(true) }
@@ -209,7 +208,7 @@ fun TopBar(
         animationSpec = infiniteRepeatable(
             tween(durationMillis = 2000, easing = LinearEasing),
             RepeatMode.Restart
-        )
+        ), label = "RotationAnimation"
     )
     val currentRotation = if (isAutoRefreshing) rotationAngle else 0f
 

@@ -7,8 +7,9 @@ import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import java.io.IOException
 import java.net.InetAddress
+import kotlin.math.roundToInt
 
-class Model(context: ComponentActivity, var sps: Communication) {
+class Model(context: ComponentActivity) {
     var context = context
     var values = MutableList(0) { DataItem("", "") }
 
@@ -20,7 +21,7 @@ class Model(context: ComponentActivity, var sps: Communication) {
     suspend fun refreshSPSData() = withContext(Dispatchers.IO) {
         settings = loadSettings(context)
         values = MutableList(0) { DataItem("", "") }
-        if (sps.hasConnection()) {
+        if (SPSManager.sps?.hasConnection() == true) {
             for (i in 0 until settings.length()) {
                 val setting = settings.getJSONObject(i)
                 val name = setting.getString("name")
@@ -29,14 +30,19 @@ class Model(context: ComponentActivity, var sps: Communication) {
                 val dbnr = setting.getInt("dbnr")
                 val unit = setting.getString("unit")
                 val factor = setting.getDouble("factor")
-                val value = when (type) {
-                    "Integer" -> (sps.GetDBW(nr, dbnr) * factor).toString()
-                    "Real" -> (sps.GetDBR(nr, dbnr) * factor).toString()
-                    "Double Integer" -> (sps.GetDBD(nr, dbnr) * factor).toString()
-                    "Byte" -> (sps.GetDBB(nr, dbnr) * factor).toString()
-                    "Bit" -> sps.GetDBX(nr, dbnr, factor.toInt()).toString()
-                    else -> "-1.0"
+                val value = try {
+                    when (type) {
+                        "Integer" -> (SPSManager.sps!!.GetDBW(nr, dbnr) * factor).roundToInt().toString()
+                        "Real" -> (SPSManager.sps!!.GetDBR(nr, dbnr) * factor).toString()
+                        "Double Integer" -> (SPSManager.sps!!.GetDBD(nr, dbnr) * factor).roundToInt().toString()
+                        "Byte" -> (SPSManager.sps!!.GetDBB(nr, dbnr) * factor).roundToInt().toString()
+                        "Bit" -> SPSManager.sps!!.GetDBX(nr, dbnr, factor.toInt()).toString()
+                        else -> "-1.0"
+                    }
+                } catch (ioexc: IOException) {
+                    "IO Exception"
                 }
+
                 val newItem = DataItem(name, "" + value + " " + unit)
                 if (values.size <= i) {
                     values.add(newItem)
@@ -64,8 +70,11 @@ class Model(context: ComponentActivity, var sps: Communication) {
     }
 
     private fun connectSPS() {
-        sps.connect()
+        if (SPSManager.sps == null) {
+            Log.d("connectSPS", "sps is null")
+            SPSManager.sps = Communication()
+        }
+        SPSManager.sps!!.connect()
+        Log.d("connectSPS", "HasConnection: " + SPSManager.sps!!.hasConnection().toString())
     }
-
-
 }
